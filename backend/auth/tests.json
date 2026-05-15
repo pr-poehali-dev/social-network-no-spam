@@ -1,0 +1,18 @@
+{
+  "tests": [
+    {
+      "name": "Wrong password returns 401",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "login", "email": "nobody@example.com", "password": "wrong"},
+      "expectedStatus": 401
+    },
+    {
+      "name": "Missing fields returns 400",
+      "method": "POST",
+      "path": "/",
+      "body": {"action": "login", "email": "", "password": ""},
+      "expectedStatus": 400
+    }
+  ]
+}
