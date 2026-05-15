@@ -34,7 +34,7 @@ const FEED_POSTS = [
     avatar: "КЗ",
     avatarGrad: "from-violet-500 to-fuchsia-400",
     time: "15 мин назад",
-    text: "Vault не продаёт данные рекламщикам. Звучит как фантастика в 2026, но вот — существует.",
+    text: "Temk не продаёт данные рекламщикам. Звучит как фантастика в 2026, но вот — существует.",
     likes: 134,
     comments: 31,
     reposts: 56,
@@ -47,7 +47,7 @@ const FEED_POSTS = [
     avatar: "МС",
     avatarGrad: "from-fuchsia-400 to-pink-500",
     time: "1 час назад",
-    text: "Разница между Vault и другими соцсетями: здесь я не товар. Мои данные — только мои.",
+    text: "Разница между Temk и другими соцсетями: здесь я не товар. Мои данные — только мои.",
     likes: 89,
     comments: 17,
     reposts: 24,
@@ -57,7 +57,7 @@ const FEED_POSTS = [
 
 const MESSAGES_LIST = [
   { id: 1, name: "Алиса Морозова", avatar: "АМ", grad: "from-cyan-400 to-violet-500", last: "Увидимся в шифрованном чате 😄", time: "10:42", unread: 3, online: true },
-  { id: 2, name: "Команда Vault", avatar: "V", grad: "from-violet-500 to-fuchsia-400", last: "Добро пожаловать в безопасное пространство!", time: "Вчера", unread: 0, online: true },
+  { id: 2, name: "Команда Temk", avatar: "T", grad: "from-violet-500 to-fuchsia-400", last: "Добро пожаловать в безопасное пространство!", time: "Вчера", unread: 0, online: true },
   { id: 3, name: "Дима Ортов", avatar: "ДО", grad: "from-emerald-400 to-cyan-500", last: "Отличная статья о zero-knowledge", time: "Пн", unread: 1, online: false },
   { id: 4, name: "Настя Волкова", avatar: "НВ", grad: "from-fuchsia-400 to-rose-400", last: "Когда следующий митап?", time: "Вс", unread: 0, online: false },
 ];
@@ -305,7 +305,7 @@ function ProfileSection() {
         <div className="absolute inset-0 animated-gradient opacity-30" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(168,85,247,0.4),transparent_70%)]" />
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-5xl font-black font-display opacity-8 tracking-[0.3em] text-white">VAULT</span>
+          <span className="text-5xl font-black font-display opacity-8 tracking-[0.3em] text-white">TEMK</span>
         </div>
       </div>
 
@@ -415,7 +415,7 @@ function AboutSection() {
           <div className="w-16 h-16 rounded-2xl animated-gradient flex items-center justify-center mx-auto mb-4">
             <Icon name="Shield" size={28} className="text-white" />
           </div>
-          <h2 className="font-black font-display text-3xl grad-text mb-2 tracking-wider">VAULT</h2>
+          <h2 className="font-black font-display text-3xl grad-text mb-2 tracking-wider">TEMK</h2>
           <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
             Социальная сеть нового поколения, где ваши данные принадлежат только вам. Без слежки, без рекламы, без компромиссов.
           </p>
@@ -457,7 +457,7 @@ function AboutSection() {
         </div>
       </div>
 
-      <p className="text-center text-xs text-muted-foreground pb-1">Сделано с ❤️ для тех, кто ценит свободу · Vault 2026</p>
+      <p className="text-center text-xs text-muted-foreground pb-1">Сделано с ❤️ для тех, кто ценит свободу · Temk 2026</p>
     </div>
   );
 }
@@ -505,7 +505,7 @@ export default function Index() {
             <div className="w-8 h-8 rounded-lg animated-gradient flex items-center justify-center">
               <Icon name="Shield" size={16} className="text-white" />
             </div>
-            <span className="font-black font-display text-lg grad-text tracking-widest">VAULT</span>
+            <span className="font-black font-display text-lg grad-text tracking-widest">TEMK</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25">
