@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 
-type Section = "feed" | "messages" | "search" | "notifications" | "profile" | "settings" | "about";
+type Section = "feed" | "messages" | "calls" | "search" | "notifications" | "profile" | "settings" | "about";
 
 const NAV_ITEMS = [
   { id: "feed" as Section, icon: "LayoutGrid", label: "Лента" },
   { id: "messages" as Section, icon: "MessageCircle", label: "Чаты" },
+  { id: "calls" as Section, icon: "Phone", label: "Звонки" },
   { id: "search" as Section, icon: "Search", label: "Поиск" },
   { id: "notifications" as Section, icon: "Bell", label: "Оповещения" },
   { id: "profile" as Section, icon: "User", label: "Профиль" },
@@ -75,6 +76,20 @@ const SEARCH_USERS = [
   { name: "Кирилл Звонарёв", handle: "@kirill_z", avatar: "КЗ", grad: "from-violet-500 to-fuchsia-400", followers: "4.7K", verified: false },
   { name: "Мария Степанова", handle: "@maria_s", avatar: "МС", grad: "from-fuchsia-400 to-pink-500", followers: "890", verified: true },
   { name: "Дима Ортов", handle: "@dima_o", avatar: "ДО", grad: "from-emerald-400 to-cyan-500", followers: "2.1K", verified: false },
+];
+
+const CONTACTS = [
+  { id: 1, name: "Алиса Морозова", handle: "@alice_m", avatar: "АМ", grad: "from-cyan-400 to-violet-500", online: true },
+  { id: 2, name: "Кирилл Звонарёв", handle: "@kirill_z", avatar: "КЗ", grad: "from-violet-500 to-fuchsia-400", online: false },
+  { id: 3, name: "Мария Степанова", handle: "@maria_s", avatar: "МС", grad: "from-fuchsia-400 to-pink-500", online: true },
+  { id: 4, name: "Дима Ортов", handle: "@dima_o", avatar: "ДО", grad: "from-emerald-400 to-cyan-500", online: false },
+  { id: 5, name: "Настя Волкова", handle: "@nastya_v", avatar: "НВ", grad: "from-rose-400 to-fuchsia-400", online: true },
+];
+
+const CALL_HISTORY = [
+  { id: 1, name: "Алиса Морозова", avatar: "АМ", grad: "from-cyan-400 to-violet-500", type: "incoming", duration: "4:32", time: "Сегодня, 10:14" },
+  { id: 2, name: "Дима Ортов", avatar: "ДО", grad: "from-emerald-400 to-cyan-500", type: "outgoing", duration: "1:07", time: "Вчера, 18:40" },
+  { id: 3, name: "Мария Степанова", avatar: "МС", grad: "from-fuchsia-400 to-pink-500", type: "missed", duration: "", time: "Пн, 09:22" },
 ];
 
 const PRIVACY_FEATURES = [
@@ -462,9 +477,162 @@ function AboutSection() {
   );
 }
 
+function CallsSection() {
+  const [callTarget, setCallTarget] = useState<typeof CONTACTS[0] | null>(null);
+  const [callState, setCallState] = useState<"idle" | "calling" | "active">("idle");
+  const [duration, setDuration] = useState(0);
+  const [muted, setMuted] = useState(false);
+  const [speaker, setSpeaker] = useState(true);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const localStream = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    if (callState === "active") {
+      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setDuration(0);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [callState]);
+
+  function formatDuration(s: number) {
+    const m = Math.floor(s / 60).toString().padStart(2, "0");
+    const sec = (s % 60).toString().padStart(2, "0");
+    return `${m}:${sec}`;
+  }
+
+  async function startCall(contact: typeof CONTACTS[0]) {
+    setCallTarget(contact);
+    setCallState("calling");
+    try {
+      localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (_e) {
+      // микрофон недоступен — продолжаем без аудио
+    }
+    setTimeout(() => setCallState("active"), 2000);
+  }
+
+  function endCall() {
+    localStream.current?.getTracks().forEach(t => t.stop());
+    localStream.current = null;
+    setCallState("idle");
+    setCallTarget(null);
+    setMuted(false);
+  }
+
+  if (callState !== "idle" && callTarget) {
+    return (
+      <div className="flex flex-col items-center justify-between min-h-[60vh] py-8">
+        <div className="text-center">
+          <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${callTarget.grad} flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 ${callState === "calling" ? "pulse-glow" : ""}`}>
+            {callTarget.avatar}
+          </div>
+          <h2 className="text-xl font-bold text-foreground">{callTarget.name}</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            {callState === "calling" ? "Соединение..." : formatDuration(duration)}
+          </p>
+          {callState === "active" && (
+            <div className="flex items-center gap-1.5 justify-center mt-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs text-emerald-500 font-medium">Зашифровано E2E</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-6 mt-8">
+          <button
+            onClick={() => setMuted(m => !m)}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${muted ? "bg-rose-500 text-white" : "glass text-muted-foreground"}`}
+          >
+            <Icon name={muted ? "MicOff" : "Mic"} size={22} />
+          </button>
+          <button
+            onClick={endCall}
+            className="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all"
+          >
+            <Icon name="PhoneOff" size={26} className="text-white" />
+          </button>
+          <button
+            onClick={() => setSpeaker(s => !s)}
+            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${speaker ? "animated-gradient text-white" : "glass text-muted-foreground"}`}
+          >
+            <Icon name={speaker ? "Volume2" : "VolumeX"} size={22} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Контакты</h3>
+        <div className="space-y-2">
+          {CONTACTS.map(contact => (
+            <div key={contact.id} className="glass-bright rounded-xl p-3 flex items-center gap-3">
+              <div className="relative">
+                <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${contact.grad} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                  {contact.avatar}
+                </div>
+                {contact.online && (
+                  <div className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-foreground truncate">{contact.name}</p>
+                <p className="text-xs text-muted-foreground">{contact.online ? "В сети" : "Не в сети"}</p>
+              </div>
+              <button
+                onClick={() => startCall(contact)}
+                className="w-9 h-9 rounded-full animated-gradient flex items-center justify-center shadow hover:opacity-90 transition"
+              >
+                <Icon name="Phone" size={16} className="text-white" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">История звонков</h3>
+        <div className="space-y-2">
+          {CALL_HISTORY.map(call => (
+            <div key={call.id} className="glass rounded-xl p-3 flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${call.grad} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                {call.avatar}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-foreground truncate">{call.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Icon
+                    name={call.type === "incoming" ? "PhoneIncoming" : call.type === "outgoing" ? "PhoneOutgoing" : "PhoneMissed"}
+                    size={12}
+                    className={call.type === "missed" ? "text-rose-400" : "text-emerald-400"}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {call.time}{call.duration ? ` · ${call.duration}` : ""}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => startCall(CONTACTS.find(c => c.name === call.name) || CONTACTS[0])}
+                className="w-8 h-8 rounded-full glass flex items-center justify-center hover:bg-white/10 transition"
+              >
+                <Icon name="Phone" size={14} className="text-muted-foreground" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const SECTIONS: Record<Section, () => JSX.Element> = {
   feed: FeedSection,
   messages: MessagesSection,
+  calls: CallsSection,
   search: SearchSection,
   notifications: NotificationsSection,
   profile: ProfileSection,
@@ -475,6 +643,7 @@ const SECTIONS: Record<Section, () => JSX.Element> = {
 const SECTION_TITLES: Record<Section, string> = {
   feed: "Лента",
   messages: "Сообщения",
+  calls: "Звонки",
   search: "Поиск",
   notifications: "Уведомления",
   profile: "Профиль",
