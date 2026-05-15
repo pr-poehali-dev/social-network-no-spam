@@ -480,11 +480,14 @@ function AboutSection() {
 function CallsSection() {
   const [callTarget, setCallTarget] = useState<typeof CONTACTS[0] | null>(null);
   const [callState, setCallState] = useState<"idle" | "calling" | "active">("idle");
+  const [callType, setCallType] = useState<"audio" | "video">("audio");
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [videoOff, setVideoOff] = useState(false);
   const [speaker, setSpeaker] = useState(true);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localStream = useRef<MediaStream | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (callState === "active") {
@@ -496,19 +499,30 @@ function CallsSection() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [callState]);
 
+  useEffect(() => {
+    if (localStream.current && localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream.current;
+    }
+  }, [callState]);
+
   function formatDuration(s: number) {
     const m = Math.floor(s / 60).toString().padStart(2, "0");
     const sec = (s % 60).toString().padStart(2, "0");
     return `${m}:${sec}`;
   }
 
-  async function startCall(contact: typeof CONTACTS[0]) {
+  async function startCall(contact: typeof CONTACTS[0], type: "audio" | "video" = "audio") {
     setCallTarget(contact);
+    setCallType(type);
     setCallState("calling");
+    setVideoOff(false);
     try {
-      localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      localStream.current = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: type === "video",
+      });
     } catch (_e) {
-      // микрофон недоступен — продолжаем без аудио
+      // устройство недоступно
     }
     setTimeout(() => setCallState("active"), 2000);
   }
@@ -519,46 +533,92 @@ function CallsSection() {
     setCallState("idle");
     setCallTarget(null);
     setMuted(false);
+    setVideoOff(false);
+  }
+
+  function toggleVideo() {
+    if (localStream.current) {
+      localStream.current.getVideoTracks().forEach(t => { t.enabled = videoOff; });
+    }
+    setVideoOff(v => !v);
   }
 
   if (callState !== "idle" && callTarget) {
     return (
-      <div className="flex flex-col items-center justify-between min-h-[60vh] py-8">
-        <div className="text-center">
-          <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${callTarget.grad} flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 ${callState === "calling" ? "pulse-glow" : ""}`}>
-            {callTarget.avatar}
-          </div>
-          <h2 className="text-xl font-bold text-foreground">{callTarget.name}</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            {callState === "calling" ? "Соединение..." : formatDuration(duration)}
-          </p>
-          {callState === "active" && (
-            <div className="flex items-center gap-1.5 justify-center mt-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs text-emerald-500 font-medium">Зашифровано E2E</span>
+      <div className="flex flex-col min-h-[65vh] rounded-2xl overflow-hidden relative bg-gray-900">
+        {/* Remote video / avatar area */}
+        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900 relative min-h-48">
+          {callType === "video" && callState === "active" ? (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${callTarget.grad} flex items-center justify-center text-white text-3xl font-bold opacity-40`}>
+                {callTarget.avatar}
+              </div>
+              <span className="absolute text-white/50 text-xs mt-28">Камера собеседника</span>
+            </div>
+          ) : (
+            <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${callTarget.grad} flex items-center justify-center text-white text-3xl font-bold ${callState === "calling" ? "pulse-glow" : ""}`}>
+              {callTarget.avatar}
             </div>
           )}
+
+          {/* Local video (picture-in-picture) */}
+          {callType === "video" && !videoOff && (
+            <div className="absolute bottom-3 right-3 w-24 h-32 rounded-xl overflow-hidden border-2 border-white/20 bg-gray-700">
+              <video ref={localVideoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+            </div>
+          )}
+
+          {/* Info overlay */}
+          <div className="absolute top-3 left-0 right-0 text-center">
+            <p className="text-white font-semibold text-base">{callTarget.name}</p>
+            <p className="text-white/60 text-xs mt-0.5">
+              {callState === "calling" ? "Соединение..." : formatDuration(duration)}
+            </p>
+            {callState === "active" && (
+              <div className="flex items-center gap-1.5 justify-center mt-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-xs text-emerald-400 font-medium">E2E</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-6 mt-8">
+        {/* Controls */}
+        <div className="bg-gray-900/95 px-4 py-5 flex items-center justify-center gap-4">
           <button
             onClick={() => setMuted(m => !m)}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${muted ? "bg-rose-500 text-white" : "glass text-muted-foreground"}`}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${muted ? "bg-rose-500 text-white" : "bg-white/10 text-white"}`}
           >
-            <Icon name={muted ? "MicOff" : "Mic"} size={22} />
+            <Icon name={muted ? "MicOff" : "Mic"} size={20} />
           </button>
+          {callType === "video" && (
+            <button
+              onClick={toggleVideo}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${videoOff ? "bg-rose-500 text-white" : "bg-white/10 text-white"}`}
+            >
+              <Icon name={videoOff ? "VideoOff" : "Video"} size={20} />
+            </button>
+          )}
           <button
             onClick={endCall}
-            className="w-16 h-16 rounded-full bg-rose-500 flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all"
+            className="w-14 h-14 rounded-full bg-rose-500 flex items-center justify-center shadow-lg hover:bg-rose-600 transition-all"
           >
-            <Icon name="PhoneOff" size={26} className="text-white" />
+            <Icon name="PhoneOff" size={24} className="text-white" />
           </button>
           <button
             onClick={() => setSpeaker(s => !s)}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${speaker ? "animated-gradient text-white" : "glass text-muted-foreground"}`}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${speaker ? "animated-gradient text-white" : "bg-white/10 text-white"}`}
           >
-            <Icon name={speaker ? "Volume2" : "VolumeX"} size={22} />
+            <Icon name={speaker ? "Volume2" : "VolumeX"} size={20} />
           </button>
+          {callType === "audio" && (
+            <button
+              onClick={() => { endCall(); setTimeout(() => startCall(callTarget, "video"), 100); }}
+              className="w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center transition-all hover:bg-white/20"
+            >
+              <Icon name="Video" size={20} />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -583,12 +643,20 @@ function CallsSection() {
                 <p className="font-semibold text-sm text-foreground truncate">{contact.name}</p>
                 <p className="text-xs text-muted-foreground">{contact.online ? "В сети" : "Не в сети"}</p>
               </div>
-              <button
-                onClick={() => startCall(contact)}
-                className="w-9 h-9 rounded-full animated-gradient flex items-center justify-center shadow hover:opacity-90 transition"
-              >
-                <Icon name="Phone" size={16} className="text-white" />
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => startCall(contact, "audio")}
+                  className="w-9 h-9 rounded-full animated-gradient flex items-center justify-center shadow hover:opacity-90 transition"
+                >
+                  <Icon name="Phone" size={15} className="text-white" />
+                </button>
+                <button
+                  onClick={() => startCall(contact, "video")}
+                  className="w-9 h-9 rounded-full bg-violet-500 flex items-center justify-center shadow hover:opacity-90 transition"
+                >
+                  <Icon name="Video" size={15} className="text-white" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -615,12 +683,20 @@ function CallsSection() {
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => startCall(CONTACTS.find(c => c.name === call.name) || CONTACTS[0])}
-                className="w-8 h-8 rounded-full glass flex items-center justify-center hover:bg-white/10 transition"
-              >
-                <Icon name="Phone" size={14} className="text-muted-foreground" />
-              </button>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => startCall(CONTACTS.find(c => c.name === call.name) || CONTACTS[0], "audio")}
+                  className="w-8 h-8 rounded-full glass flex items-center justify-center hover:bg-white/10 transition"
+                >
+                  <Icon name="Phone" size={13} className="text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => startCall(CONTACTS.find(c => c.name === call.name) || CONTACTS[0], "video")}
+                  className="w-8 h-8 rounded-full glass flex items-center justify-center hover:bg-white/10 transition"
+                >
+                  <Icon name="Video" size={13} className="text-muted-foreground" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
