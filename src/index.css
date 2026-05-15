@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 220 30% 97%;
+    --background: 48 100% 92%;
     --foreground: 220 25% 12%;
 
     --card: 0 0% 100%;
@@ -49,7 +49,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: "Golos Text", sans-serif;
-    background: #f3f4f8;
+    background: #fff7cc;
     overflow-x: hidden;
   }
 
